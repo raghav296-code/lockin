@@ -1,0 +1,270 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: #F5F5F7;
+    --surface: #FFFFFF;
+    --surface-secondary: #F2F2F7;
+    --surface-tertiary: #E5E5EA;
+    --border: rgba(0, 0, 0, 0.08);
+    --border-hover: rgba(0, 0, 0, 0.16);
+    --foreground: #1D1D1F;
+    --secondary: #6E6E73;
+    --muted: #8E8E93;
+    --muted-bg: rgba(0, 0, 0, 0.04);
+
+    --accent: #007AFF;
+    --accent-hover: #0062CC;
+    --accent-tint: rgba(0, 122, 255, 0.10);
+    --accent-border: rgba(0, 122, 255, 0.20);
+
+    --success: #34C759;
+    --success-tint: rgba(52, 199, 89, 0.10);
+    --success-border: rgba(52, 199, 89, 0.20);
+
+    --warning: #FF9500;
+    --warning-tint: rgba(255, 149, 0, 0.10);
+    --warning-border: rgba(255, 149, 0, 0.20);
+
+    --danger: #FF3B30;
+    --danger-tint: rgba(255, 59, 48, 0.10);
+    --danger-border: rgba(255, 59, 48, 0.20);
+
+    --purple: #AF52DE;
+    --purple-tint: rgba(175, 82, 222, 0.10);
+    --purple-border: rgba(175, 82, 222, 0.20);
+
+    --teal: #5AC8FA;
+    --teal-tint: rgba(90, 200, 250, 0.10);
+    --teal-border: rgba(90, 200, 250, 0.20);
+
+    --indigo: #5856D6;
+    --indigo-tint: rgba(88, 86, 214, 0.10);
+
+    --pink: #FF2D55;
+    --pink-tint: rgba(255, 45, 85, 0.10);
+  }
+
+  .dark {
+    --background: #000000;
+    --surface: #1C1C1E;
+    --surface-secondary: #2C2C2E;
+    --surface-tertiary: #3A3A3C;
+    --border: rgba(255, 255, 255, 0.10);
+    --border-hover: rgba(255, 255, 255, 0.20);
+    --foreground: #F5F5F7;
+    --secondary: #98989D;
+    --muted: #6E6E73;
+    --muted-bg: rgba(255, 255, 255, 0.06);
+
+    --accent: #0A84FF;
+    --accent-hover: #0071E3;
+    --accent-tint: rgba(10, 132, 255, 0.16);
+    --accent-border: rgba(10, 132, 255, 0.25);
+
+    --success: #32D74B;
+    --success-tint: rgba(50, 215, 75, 0.16);
+    --success-border: rgba(50, 215, 75, 0.25);
+
+    --warning: #FF9F0A;
+    --warning-tint: rgba(255, 159, 10, 0.16);
+    --warning-border: rgba(255, 159, 10, 0.25);
+
+    --danger: #FF453A;
+    --danger-tint: rgba(255, 69, 58, 0.16);
+    --danger-border: rgba(255, 69, 58, 0.25);
+
+    --purple: #BF5AF2;
+    --purple-tint: rgba(191, 90, 242, 0.16);
+    --purple-border: rgba(191, 90, 242, 0.25);
+
+    --teal: #64D2FF;
+    --teal-tint: rgba(100, 210, 255, 0.16);
+    --teal-border: rgba(100, 210, 255, 0.25);
+
+    --indigo: #5E5CE6;
+    --indigo-tint: rgba(94, 92, 230, 0.16);
+
+    --pink: #FF375F;
+    --pink-tint: rgba(255, 55, 95, 0.16);
+  }
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-tertiary: var(--surface-tertiary);
+  --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+  --color-foreground: var(--foreground);
+  --color-secondary: var(--secondary);
+  --color-muted: var(--muted);
+  --color-muted-bg: var(--muted-bg);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-tint: var(--accent-tint);
+  --color-accent-border: var(--accent-border);
+
+  --color-success: var(--success);
+  --color-success-tint: var(--success-tint);
+  --color-success-border: var(--success-border);
+
+  --color-warning: var(--warning);
+  --color-warning-tint: var(--warning-tint);
+  --color-warning-border: var(--warning-border);
+
+  --color-danger: var(--danger);
+  --color-danger-tint: var(--danger-tint);
+  --color-danger-border: var(--danger-border);
+
+  --color-purple: var(--purple);
+  --color-purple-tint: var(--purple-tint);
+  --color-purple-border: var(--purple-border);
+
+  --color-teal: var(--teal);
+  --color-teal-tint: var(--teal-tint);
+  --color-teal-border: var(--teal-border);
+
+  --color-indigo: var(--indigo);
+  --color-indigo-tint: var(--indigo-tint);
+
+  --color-pink: var(--pink);
+  --color-pink-tint: var(--pink-tint);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  font-feature-settings: "cv11", "ss01", "tnum";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", var(--font-inter), "Helvetica Neue", sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 400;
+  letter-spacing: -0.011em;
+  transition: background-color 200ms cubic-bezier(0.25, 0.1, 0.25, 1),
+              color 200ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* Apple HIG Translucent Materials */
+.apple-glass {
+  background-color: color-mix(in srgb, var(--surface) 80%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.apple-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02);
+  transition: transform 180ms cubic-bezier(0.25, 0.1, 0.25, 1),
+              box-shadow 180ms cubic-bezier(0.25, 0.1, 0.25, 1),
+              border-color 180ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.dark .apple-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.apple-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.dark .apple-card:hover {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* Apple HIG Segmented Control */
+.apple-segmented-track {
+  background-color: var(--muted-bg);
+  border-radius: 12px;
+  padding: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.apple-segmented-item {
+  border-radius: 9px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--secondary);
+  transition: all 160ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.apple-segmented-item.active {
+  background-color: var(--surface);
+  color: var(--foreground);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.dark .apple-segmented-item.active {
+  background-color: var(--surface-secondary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Apple HIG Icon Squircle Container */
+.apple-squircle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  transition: transform 160ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* Buttons and Interactive Elements Smooth Spring Feedback */
+button, a, input, select, textarea {
+  transition: all 180ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+/* Custom Apple Thin Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 128, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 120, 128, 0.35);
+}
+
+/* Accessibility: Respect user prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

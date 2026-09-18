@@ -1,0 +1,433 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  USER
+}
+
+enum ResourceType {
+  ARTICLE
+  BOOK
+  VIDEO
+  COURSE
+  PAPER
+  DOCUMENTATION
+  OTHER
+}
+
+enum ResourceStatus {
+  BACKLOG
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+enum MasteryLevel {
+  NOVICE
+  FAMILIAR
+  PROFICIENT
+  MASTERED
+}
+
+enum ConceptRelationType {
+  PREREQUISITE_FOR
+  RELATED_TO
+  PART_OF
+  EXTENDS
+}
+
+enum ConceptImportance {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model User {
+  id              String        @id @default(cuid())
+  email           String        @unique
+  username        String?       @unique
+  name            String?
+  passwordHash    String?
+  avatarUrl       String?
+  role            Role          @default(USER)
+  isActive        Boolean       @default(true)
+  bio             String?
+  isProfilePublic Boolean       @default(false)
+  emailVerified   DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  accounts        Account[]
+  categories      Category[]
+  resources       Resource[]
+  concepts        Concept[]
+  tags            Tag[]
+  activityLogs    ActivityLog[]
+  semesterPlans   SemesterPlan[]
+  studyTasks      StudyTask[]
+  studySessions   StudySession[]
+  skills          Skill[]
+  projects        Project[]
+
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  userId    String
+  parentId  String?
+  name      String
+  slug      String
+  level     Int        // 1: Field, 2: Subject, 3: Topic
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  parent    Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Category[] @relation("CategoryHierarchy")
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resources Resource[]
+  concepts  Concept[]
+  skills    Skill[]
+
+  @@unique([userId, parentId, name])
+  @@index([userId, level])
+  @@map("categories")
+}
+
+model Resource {
+  id               String         @id @default(cuid())
+  userId           String
+  categoryId       String?
+  title            String
+  url              String?        @db.Text
+  type             ResourceType   @default(ARTICLE)
+  status           ResourceStatus @default(BACKLOG)
+  rating           Int?           // 1-5 rating
+  notes            String?        @db.Text
+  summary          String?        @db.Text
+  author           String?
+  estimatedMinutes Int?
+  actualMinutes    Int            @default(0)
+  isFavorite       Boolean        @default(false)
+  completedAt      DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category         Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags             ResourceTag[]
+  concepts         ConceptResource[]
+  studyTasks       StudyTask[]
+  studySessions    StudySession[]
+
+  @@index([userId, status])
+  @@index([userId, categoryId])
+  @@index([userId, isFavorite])
+  @@map("resources")
+}
+
+model Concept {
+  id             String            @id @default(cuid())
+  userId         String
+  categoryId     String?
+  title          String
+  slug           String
+  summary        String?           @db.Text
+  notes          String?           @db.Text
+  masteryLevel   MasteryLevel      @default(NOVICE)
+  importance     ConceptImportance @default(MEDIUM)
+  isFavorite     Boolean           @default(false)
+  lastReviewedAt DateTime?
+  nextReviewAt   DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category       Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  resources      ConceptResource[]
+  tags           ConceptTag[]
+  studyTasks     StudyTask[]
+  studySessions  StudySession[]
+  
+  outgoingRelations ConceptRelation[] @relation("SourceRelations")
+  incomingRelations ConceptRelation[] @relation("TargetRelations")
+
+  @@unique([userId, slug])
+  @@index([userId, masteryLevel])
+  @@index([userId, categoryId])
+  @@index([userId, importance])
+  @@map("concepts")
+}
+
+model ConceptRelation {
+  id          String              @id @default(cuid())
+  sourceId    String
+  targetId    String
+  relationType ConceptRelationType @default(PREREQUISITE_FOR)
+  description String?
+  strength    Int                 @default(3) // 1-5
+  createdAt   DateTime            @default(now())
+
+  source      Concept             @relation("SourceRelations", fields: [sourceId], references: [id], onDelete: Cascade)
+  target      Concept             @relation("TargetRelations", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, targetId, relationType])
+  @@index([sourceId])
+  @@index([targetId])
+  @@map("concept_relations")
+}
+
+model ConceptResource {
+  conceptId  String
+  resourceId String
+  note       String?
+
+  concept    Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@id([conceptId, resourceId])
+  @@map("concept_resources")
+}
+
+model Tag {
+  id        String        @id @default(cuid())
+  userId    String
+  name      String
+  color     String?       // Hex color code or preset name
+  createdAt DateTime      @default(now())
+
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resources ResourceTag[]
+  concepts  ConceptTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("tags")
+}
+
+model ResourceTag {
+  resourceId String
+  tagId      String
+
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([resourceId, tagId])
+  @@map("resource_tags")
+}
+
+model ConceptTag {
+  conceptId String
+  tagId     String
+
+  concept   Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([conceptId, tagId])
+  @@map("concept_tags")
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String   // CREATE, UPDATE, DELETE, COMPLETE, REPARENT, PROMOTE
+  entityType String   // category, tag, resource, concept, skill, task, etc.
+  entityId   String
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("activity_logs")
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  DEFERRED
+}
+
+enum SessionType {
+  POMODORO
+  DEEP_WORK
+  REVIEW
+  QUICK_STUDY
+}
+
+model SemesterPlan {
+  id                String       @id @default(cuid())
+  userId            String
+  title             String       // e.g. "Fall Semester 2026", "Spring 2027", "Final Exams Sprint"
+  startDate         DateTime
+  endDate           DateTime
+  color             String       @default("#007AFF") // Apple accent hex
+  goalSummary       String?      @db.Text
+  targetWeeklyHours Float        @default(20.0)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks             StudyTask[]
+
+  @@index([userId, startDate, endDate])
+  @@map("semester_plans")
+}
+
+model StudyTask {
+  id                String        @id @default(cuid())
+  userId            String
+  semesterPlanId    String?
+  title             String
+  description       String?       @db.Text
+  scheduledDate     DateTime      // Day scheduled for
+  startTime         String?       // "09:00"
+  endTime           String?       // "10:30"
+  estimatedMinutes  Int           @default(30)
+  actualMinutes     Int           @default(0)
+  priority          TaskPriority  @default(MEDIUM)
+  status            TaskStatus    @default(TODO)
+  isExamOrMilestone Boolean       @default(false)
+  resourceId        String?
+  conceptId         String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  semesterPlan      SemesterPlan? @relation(fields: [semesterPlanId], references: [id], onDelete: SetNull)
+  resource          Resource?     @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+  concept           Concept?      @relation(fields: [conceptId], references: [id], onDelete: SetNull)
+  sessions          StudySession[]
+
+  @@index([userId, scheduledDate])
+  @@index([userId, status])
+  @@index([userId, semesterPlanId])
+  @@map("study_tasks")
+}
+
+model StudySession {
+  id              String      @id @default(cuid())
+  userId          String
+  studyTaskId     String?
+  resourceId      String?
+  conceptId       String?
+  sessionType     SessionType @default(POMODORO)
+  durationMinutes Int         // Completed minutes
+  completedRounds Int         @default(1)
+  notes           String?     @db.Text
+  startedAt       DateTime    @default(now())
+  endedAt         DateTime    @default(now())
+  createdAt       DateTime    @default(now())
+
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyTask       StudyTask?  @relation(fields: [studyTaskId], references: [id], onDelete: SetNull)
+  resource        Resource?   @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+  concept         Concept?    @relation(fields: [conceptId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([userId, startedAt])
+  @@map("study_sessions")
+}
+
+model Skill {
+  id          String   @id @default(cuid())
+  userId      String
+  parentId    String?
+  categoryId  String?
+  name        String
+  description String?  @db.Text
+  iconUrl     String?
+  progress    Int      @default(0) // 0 - 100%
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent      Skill?         @relation("SkillHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Skill[]        @relation("SkillHierarchy")
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  projects    SkillProject[]
+
+  @@unique([userId, parentId, name])
+  @@index([userId, progress])
+  @@index([userId, categoryId])
+  @@index([userId, parentId])
+  @@map("skills")
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+model Project {
+  id           String        @id @default(cuid())
+  userId       String
+  name         String
+  description  String?       @db.Text
+  url          String?       @db.Text // Live deployment URL
+  repoUrl      String?       @db.Text // GitHub repo URL
+  thumbnailUrl String?       @db.Text
+  status       ProjectStatus @default(IN_PROGRESS)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skills       SkillProject[]
+
+  @@index([userId, status])
+  @@map("projects")
+}
+
+model SkillProject {
+  skillId   String
+  projectId String
+
+  skill     Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([skillId, projectId])
+  @@map("skill_projects")
+}
+
+
