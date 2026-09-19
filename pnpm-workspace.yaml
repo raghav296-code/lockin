@@ -4,3 +4,6 @@ onlyBuiltDependencies:
   - "prisma"
   - "esbuild"
   - "bcryptjs"
+  - "sharp"
+  - "unrs-resolver"
+  - "@img/sharp-libvips-linux-x64"
