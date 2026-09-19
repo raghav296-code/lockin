@@ -44,9 +44,3 @@ export interface ReviewStats {
   retentionRate: number;
   streakDays: number;
 }
-
-export interface GeneratedAICard {
-  front: string;
-  back: string;
-  hint?: string;
-}

@@ -1,22 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Sparkles,
-  Plus,
-  Play,
-  Search,
-  Layers,
-  Flame,
-  CheckCircle2,
-  Clock,
-  Trash2,
-  BrainCircuit,
-} from "lucide-react";
-import type { FlashcardItem, ReviewStats } from "./flashcard-types";
-import { FlashcardPlayer } from "./flashcard-player";
-import { AIGeneratorModal } from "./ai-generator-modal";
+import { useRouter } from "next/navigation";
+import { Plus, Play, Layers, Search, Trash2, ArrowLeft } from "lucide-react";
 import { FlashcardModal } from "./flashcard-modal";
+import { FlashcardPlayer } from "./flashcard-player";
+import type { FlashcardItem, ReviewStats } from "./flashcard-types";
 import { deleteFlashcardAction } from "@/actions/flashcards";
 
 interface FlashcardManagerProps {
@@ -32,45 +21,44 @@ export function FlashcardManager({
   initialStats,
   concepts,
 }: FlashcardManagerProps) {
+  const router = useRouter();
   const [cards, setCards] = useState<FlashcardItem[]>(initialCards);
-  const [dueCards, setDueCards] = useState<FlashcardItem[]>(initialDueCards);
-  const [stats, setStats] = useState<ReviewStats>(initialStats);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [activeTab, setActiveTab] = useState<"all" | "due" | "mastered">("due");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"due" | "all" | "mastered">("due");
   const [selectedConceptFilter, setSelectedConceptFilter] = useState<string>("all");
-  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const dueCards = cards.filter((card) => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    return new Date(card.dueDate) <= today;
+  });
+
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this flashcard?")) return;
     setDeletingId(id);
     try {
       const res = await deleteFlashcardAction(id);
       if (res.ok) {
         setCards((prev) => prev.filter((c) => c.id !== id));
-        setDueCards((prev) => prev.filter((c) => c.id !== id));
-        setStats((prev) => ({ ...prev, totalCards: Math.max(0, prev.totalCards - 1) }));
+        router.refresh();
       }
-    } catch (err) {
-      console.error(err);
     } finally {
       setDeletingId(null);
     }
   };
 
   const handleRefresh = () => {
-    window.location.reload();
+    router.refresh();
   };
 
   const filteredCards = cards.filter((card) => {
-    if (activeTab === "due") {
-      const isDue = new Date(card.dueDate) <= new Date(new Date().setHours(23, 59, 59, 999));
-      if (!isDue) return false;
-    } else if (activeTab === "mastered") {
-      if (card.interval < 21) return false;
-    }
+    const isDue = new Date(card.dueDate) <= new Date(new Date().setHours(23, 59, 59, 999));
+    const isMastered = card.interval >= 21;
+
+    if (activeTab === "due" && !isDue) return false;
+    if (activeTab === "mastered" && !isMastered) return false;
 
     if (selectedConceptFilter !== "all" && card.conceptId !== selectedConceptFilter) {
       return false;
@@ -94,15 +82,12 @@ export function FlashcardManager({
           <div className="flex items-center justify-between max-w-2xl mx-auto mb-6">
             <button
               onClick={() => setIsPlaying(false)}
-              className="text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-muted/60 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-xl bg-secondary/80 border border-border/60 transition-colors"
             >
-              ← Exit Study Session
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Exit Study Mode</span>
             </button>
-            <span className="text-xs font-medium text-muted-foreground">
-              Active Recall Mode
-            </span>
           </div>
-
           <FlashcardPlayer
             cards={dueCards.length > 0 ? dueCards : cards}
             onFinishSession={() => {
@@ -113,100 +98,12 @@ export function FlashcardManager({
         </div>
       ) : (
         <>
-          {/* Top Stats Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-3xl bg-card/70 backdrop-blur-md border border-border/60 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">Due For Review</span>
-                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                  <Clock className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <div className="text-2xl font-bold tracking-tight text-foreground">
-                  {stats.dueToday}
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {stats.dueToday === 0 ? "All caught up" : "Cards waiting today"}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-card/70 backdrop-blur-md border border-border/60 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">Reviewed Today</span>
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <div className="text-2xl font-bold tracking-tight text-foreground">
-                  {stats.reviewedToday}
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {stats.retentionRate}% retention rate
-                </div>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-card/70 backdrop-blur-md border border-border/60 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">Daily Streak</span>
-                <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center">
-                  <Flame className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <div className="text-2xl font-bold tracking-tight text-foreground">
-                  {stats.streakDays} {stats.streakDays === 1 ? "day" : "days"}
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  Spaced repetition streak
-                </div>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-card/70 backdrop-blur-md border border-border/60 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">Mastery Distribution</span>
-                <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
-                  <BrainCircuit className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <div className="text-2xl font-bold tracking-tight text-foreground">
-                  {stats.totalCards} <span className="text-xs font-normal text-muted-foreground">cards</span>
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {stats.masteredCards} mastered · {stats.learningCards} learning
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-5 rounded-3xl bg-card/60 backdrop-blur-md border border-border/50 shadow-sm">
-            <div>
-              <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                Active Recall Deck
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Scientific SM-2 repetition schedules for maximum retention
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
-              <button
-                onClick={() => setIsAIModalOpen(true)}
-                className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 text-secondary-foreground text-xs font-semibold border border-border/60 transition-all flex items-center justify-center gap-1.5 shadow-sm"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-primary" />
-                Generate with AI
-              </button>
-
+          {/* Action Header */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 text-secondary-foreground text-xs font-semibold border border-border/60 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 text-secondary-foreground text-xs font-semibold border border-border/60 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 New Card
@@ -215,7 +112,7 @@ export function FlashcardManager({
               <button
                 onClick={() => setIsPlaying(true)}
                 disabled={cards.length === 0}
-                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 Start Review ({dueCards.length > 0 ? dueCards.length : cards.length})
@@ -228,9 +125,9 @@ export function FlashcardManager({
             <div className="flex items-center p-1 rounded-2xl bg-muted/50 border border-border/50 max-w-fit">
               <button
                 onClick={() => setActiveTab("due")}
-                className={`px-4 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                className={`px-4 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                   activeTab === "due"
-                    ? "bg-card text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-sm font-semibold"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -238,9 +135,9 @@ export function FlashcardManager({
               </button>
               <button
                 onClick={() => setActiveTab("all")}
-                className={`px-4 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                className={`px-4 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                   activeTab === "all"
-                    ? "bg-card text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-sm font-semibold"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -248,13 +145,13 @@ export function FlashcardManager({
               </button>
               <button
                 onClick={() => setActiveTab("mastered")}
-                className={`px-4 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                className={`px-4 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                   activeTab === "mastered"
-                    ? "bg-card text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-sm font-semibold"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Mastered ({stats.masteredCards})
+                Mastered ({initialStats.masteredCards})
               </button>
             </div>
 
@@ -294,8 +191,8 @@ export function FlashcardManager({
               <p className="text-sm font-medium text-foreground">No flashcards found</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm">
                 {activeTab === "due"
-                  ? "You have completed all due reviews for today! Click 'Generate with AI' to add more cards."
-                  : "Create your first flashcard or generate a deck automatically from your concepts."}
+                  ? "You have completed all due reviews for today! Great job locking in."
+                  : "Create your first flashcard to start retaining concepts with spaced repetition."}
               </p>
             </div>
           ) : (
@@ -340,7 +237,7 @@ export function FlashcardManager({
                           <button
                             onClick={() => handleDelete(card.id)}
                             disabled={deletingId === card.id}
-                            className="w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
+                            className="w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                             title="Delete flashcard"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -370,14 +267,7 @@ export function FlashcardManager({
         </>
       )}
 
-      {/* Modals */}
-      <AIGeneratorModal
-        isOpen={isAIModalOpen}
-        onClose={() => setIsAIModalOpen(false)}
-        concepts={concepts}
-        onSuccess={handleRefresh}
-      />
-
+      {/* Modal */}
       <FlashcardModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}

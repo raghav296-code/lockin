@@ -9,11 +9,10 @@ import {
   createFlashcardSchema,
   updateFlashcardSchema,
   reviewFlashcardSchema,
-  generateAIFlashcardsSchema,
   type CreateFlashcardInput,
   type UpdateFlashcardInput,
 } from "@/lib/validations/flashcard";
-import type { FlashcardItem, ReviewStats, GeneratedAICard } from "@/components/flashcards/flashcard-types";
+import type { FlashcardItem, ReviewStats } from "@/components/flashcards/flashcard-types";
 
 export interface ActionResult<T = unknown> {
   ok: boolean;
@@ -374,137 +373,4 @@ export async function deleteFlashcardAction(id: string): Promise<ActionResult<{ 
     console.error("deleteFlashcardAction error:", error);
     return { ok: false, error: "Failed to delete flashcard" };
   }
-}
-
-export async function generateAIFlashcardsAction(
-  conceptId?: string | null,
-  topicTitle?: string,
-  notes?: string
-): Promise<ActionResult<GeneratedAICard[]>> {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { ok: false, error: "Unauthorized" };
-    }
-
-    let resolvedTitle = topicTitle || "";
-    let resolvedNotes = notes || "";
-
-    if (conceptId) {
-      const concept = await db.concept.findUnique({
-        where: { id: conceptId },
-        include: {
-          resources: { include: { resource: true } },
-        },
-      });
-
-      if (concept) {
-        resolvedTitle = concept.title;
-        resolvedNotes = [
-          concept.summary || "",
-          concept.notes || "",
-          ...concept.resources.map((r) => `${r.resource.title}: ${r.resource.summary || ""}`),
-        ]
-          .filter(Boolean)
-          .join("\n\n");
-      }
-    }
-
-    if (!resolvedTitle && !resolvedNotes) {
-      return { ok: false, error: "Please provide a concept, topic, or notes to analyze" };
-    }
-
-    const generated = synthesizeStudyFlashcards(resolvedTitle, resolvedNotes);
-    return { ok: true, data: generated };
-  } catch (error) {
-    console.error("generateAIFlashcardsAction error:", error);
-    return { ok: false, error: "Failed to generate AI flashcards" };
-  }
-}
-
-export async function bulkCreateFlashcardsAction(
-  cards: { front: string; back: string; hint?: string; conceptId?: string | null; resourceId?: string | null }[]
-): Promise<ActionResult<{ count: number }>> {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { ok: false, error: "Unauthorized" };
-    }
-
-    if (!cards || cards.length === 0) {
-      return { ok: false, error: "No flashcards provided" };
-    }
-
-    const created = await (db as any).flashcard?.createMany({
-      data: cards.map((c) => ({
-        userId: session.user.id,
-        front: c.front,
-        back: c.back,
-        hint: c.hint || null,
-        conceptId: c.conceptId || null,
-        resourceId: c.resourceId || null,
-        easeFactor: 2.5,
-        interval: 1,
-        repetitions: 0,
-        dueDate: new Date(),
-      })),
-    });
-
-    await logActivity({
-      userId: session.user.id,
-      action: "CREATE",
-      entityType: "flashcard",
-      entityId: "bulk",
-      meta: { count: created.count },
-    });
-
-    revalidatePath("/review");
-    revalidatePath("/concepts");
-    return { ok: true, data: { count: created.count } };
-  } catch (error) {
-    console.error("bulkCreateFlashcardsAction error:", error);
-    return { ok: false, error: "Failed to create flashcards in bulk" };
-  }
-}
-
-function synthesizeStudyFlashcards(title: string, content: string): GeneratedAICard[] {
-  const cards: GeneratedAICard[] = [];
-  const lines = content.split("\n").map((l) => l.trim()).filter((l) => l.length > 5);
-
-  cards.push({
-    front: `What is the core definition and purpose of "${title}"?`,
-    back: content.length > 20
-      ? content.slice(0, 240) + "..."
-      : `A fundamental topic in this study domain that enables structured problem solving, architecture design, and systematic implementation.`,
-    hint: `Think about what problem it solves and why it exists.`,
-  });
-
-  cards.push({
-    front: `How does "${title}" work under the hood? What are its primary mechanisms?`,
-    back: `It processes inputs through a defined execution sequence, transforming state and handling edge cases with deterministic rules.`,
-    hint: `Focus on the underlying data flow or algorithmic behavior.`,
-  });
-
-  cards.push({
-    front: `What are the primary trade-offs and advantages when using "${title}"?`,
-    back: `Pros: High efficiency, modularity, and expressiveness.\nCons: Boundary management complexity.`,
-    hint: `Compare it against alternative approaches.`,
-  });
-
-  cards.push({
-    front: `In what scenarios would you choose "${title}" over alternative solutions?`,
-    back: `When dealing with scalability constraints, high concurrency, strict domain safety, and maintainable pipelines.`,
-    hint: `Think of production case studies.`,
-  });
-
-  const bulletLines = lines.filter((l) => l.startsWith("-") || l.startsWith("*") || /^\d+\./.test(l));
-  if (bulletLines.length >= 2) {
-    cards.push({
-      front: `List key principles or properties related to "${title}".`,
-      back: bulletLines.slice(0, 3).map((b) => b.replace(/^[-*\d.]+\s*/, "")).join("\n• "),
-      hint: `Recall the main sub-components from your study notes.`,
-    });
-  }
-
-  return cards;
 }

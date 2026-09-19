@@ -22,14 +22,6 @@ export const reviewFlashcardSchema = z.object({
   rating: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
 });
 
-export const generateAIFlashcardsSchema = z.object({
-  conceptId: z.string().cuid().optional().nullable(),
-  topicTitle: z.string().max(200).optional(),
-  notes: z.string().max(10000).optional(),
-  count: z.number().min(1).max(15).default(5),
-});
-
 export type CreateFlashcardInput = z.infer<typeof createFlashcardSchema>;
 export type UpdateFlashcardInput = z.infer<typeof updateFlashcardSchema>;
 export type ReviewFlashcardInput = z.infer<typeof reviewFlashcardSchema>;
-export type GenerateAIFlashcardsInput = z.infer<typeof generateAIFlashcardsSchema>;
